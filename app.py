@@ -4,7 +4,6 @@ import requests
 import re
 import nltk
 import numpy as np
-from dotenv import load_dotenv
 import os
 
 from nltk.corpus import stopwords
@@ -17,12 +16,24 @@ from sklearn.metrics import silhouette_score
 from datetime import datetime
 
 app = Flask(__name__)
-load_dotenv()
 
+# ✅ Allow all origins (fix CORS issue)
+CORS(app)
+
+# ✅ Load API key
 API_KEY = os.getenv("NEWS_API_KEY")
-FRONTEND_URL = os.getenv("FRONTEND_URL")
 
-CORS(app, origins=[FRONTEND_URL])
+# ✅ NLTK setup (safe for Render)
+nltk.download('punkt')
+nltk.download('stopwords')
+
+stop_words = set(stopwords.words('english'))
+
+# ✅ ROOT ROUTE (fix 404 issue)
+@app.route("/")
+def home():
+    return "News Summarizer Backend Running 🚀"
+
 
 domains = {
     "t20": "T20 Cricket World Cup",
@@ -32,22 +43,22 @@ domains = {
     "nobel": "Nobel Prize winners OR Nobel Prize news"
 }
 
-nltk.download('punkt')
-nltk.download('stopwords')
 
-stop_words = set(stopwords.words('english'))
 def clean_news_text(text):
     text = re.sub(r'\(.*?\)', '', text)
     text = re.sub(r'REUTERS|Reuters|NEW DELHI|AP NEWS', '', text)
     return text.strip()
+
+
 def preprocess(text):
     text = text.lower()
     text = re.sub(r'[^a-zA-Z ]', '', text)
     words = text.split()
     words = [w for w in words if w not in stop_words]
     return " ".join(words)
-def extractive_summary(text):
 
+
+def extractive_summary(text):
     if not text.strip():
         return "No meaningful content available."
 
@@ -72,8 +83,9 @@ def extractive_summary(text):
 
     except:
         return text
-def extract_keywords(text, n=5):
 
+
+def extract_keywords(text, n=5):
     try:
         vectorizer = TfidfVectorizer(stop_words='english')
         X = vectorizer.fit_transform([text])
@@ -85,6 +97,7 @@ def extract_keywords(text, n=5):
 
     except:
         return []
+
 
 @app.route("/get-news")
 def get_news():
@@ -126,16 +139,12 @@ def get_news():
         return jsonify([{
             "summary": "No news available.",
             "keywords": [],
-            "cluster": 0
+            "cluster": 0,
+            "total_clusters": 1
         }])
-    try:
-        vectorizer = TfidfVectorizer(
-            stop_words='english',
-            max_df=0.8,
-            min_df=1,
-            ngram_range=(1, 2)
-        )
 
+    try:
+        vectorizer = TfidfVectorizer(stop_words='english', max_df=0.8, ngram_range=(1, 2))
         X = vectorizer.fit_transform(cleaned_texts)
 
         if len(cleaned_texts) < 3:
@@ -161,6 +170,7 @@ def get_news():
     except:
         labels = [0] * len(articles)
         best_k = 1
+
     final_output = []
 
     for i, article in enumerate(articles):
@@ -183,5 +193,7 @@ def get_news():
         })
 
     return jsonify(final_output)
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
