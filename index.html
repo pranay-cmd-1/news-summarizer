@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NLP News Summarizer</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f4f4;
+            margin: 0;
+        }
+
+        header {
+            background: #222;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 22px;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+            margin-top: 20px;
+        }
+
+        select, button {
+            padding: 8px 12px;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        .controls {
+            margin: 15px 0;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .cluster {
+            font-size: 12px;
+            color: gray;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>📚 NLP-Based News Summarization & Clustering</header>
+
+<div class="container">
+
+    <select id="domain">
+        <option value="t20">T20 Cricket</option>
+        <option value="trade">Trade Wars</option>
+        <option value="quantum">Quantum Computing</option>
+        <option value="space">Space News</option>
+        <option value="nobel">Nobel Prizes</option>
+    </select>
+
+    <button onclick="fetchNews()">Analyze</button>
+
+    <!-- Dynamic cluster info -->
+    <div id="clusterInfo"></div>
+
+    <!-- Dynamic cluster buttons -->
+    <div id="clusterControls" class="controls"></div>
+
+    <div id="output"></div>
+
+</div>
+
+<script>
+
+async function fetchNews() {
+
+    const domain = document.getElementById("domain").value;
+    const outputDiv = document.getElementById("output");
+
+    outputDiv.innerHTML = "Loading...";
+
+    try {
+        const res = await fetch(`http://127.0.0.1:5000/get-news?domain=${domain}`);
+        window.newsData = await res.json();
+
+        const totalClusters = window.newsData[0].total_clusters;
+
+        // ✅ Update cluster info (no duplication)
+        document.getElementById("clusterInfo").innerHTML =
+            `<h3>Total Clusters: ${totalClusters}</h3>`;
+
+        // ✅ Generate dynamic buttons
+        generateClusterButtons(totalClusters);
+
+        renderNews(window.newsData);
+
+    } catch {
+        outputDiv.innerHTML = "Error loading data";
+    }
+}
+
+function generateClusterButtons(totalClusters) {
+
+    const controls = document.getElementById("clusterControls");
+
+    // Clear old buttons
+    controls.innerHTML = "";
+
+    // All button
+    controls.innerHTML += `<button onclick="filterCluster('all')">All</button>`;
+
+    // Dynamic cluster buttons
+    for (let i = 0; i < totalClusters; i++) {
+        controls.innerHTML += `
+            <button onclick="filterCluster(${i})">
+                Cluster ${i}
+            </button>
+        `;
+    }
+}
+
+function renderNews(data) {
+
+    const outputDiv = document.getElementById("output");
+    let html = "";
+
+    data.forEach((item, index) => {
+        html += `
+        <div class="card">
+
+            <div class="top-row">
+                <div class="cluster">Cluster ${item.cluster}</div>
+                <div style="font-size:12px;">${item.date}</div>
+            </div>
+
+            <div style="font-size:13px;">
+                📰 ${item.source}
+            </div>
+
+            <p>${item.summary}</p>
+
+            <button onclick="openArticle('${item.url}')">Read More →</button>
+
+        </div>
+        `;
+    });
+
+    outputDiv.innerHTML = html;
+}
+
+function filterCluster(cluster) {
+
+    if (cluster === 'all') {
+        renderNews(window.newsData);
+        return;
+    }
+
+    const filtered = window.newsData.filter(item => item.cluster === cluster);
+    renderNews(filtered);
+}
+
+function openArticle(url) {
+    if (url) window.open(url, "_blank");
+}
+
+</script>
+
+</body>
+</html>
